@@ -4,6 +4,45 @@ import toast from 'react-hot-toast';
 import API from '../api';
 import { FaFileUpload, FaHeading } from 'react-icons/fa';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+const customMarkerIcon = new L.Icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const LocationMarker = ({ position, setPosition }) => {
+  useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+    },
+  });
+
+  return position === null ? null : (
+    <Marker position={position} icon={customMarkerIcon} />
+  );
+};
+
+const MapCenterUpdater = ({ center }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.setView(center, map.getZoom());
+    }
+  }, [center, map]);
+  return null;
+};
 
 const CATEGORIES = ['Pothole', 'Streetlight', 'Trash', 'Water Leakage', 'Other'];
 const GEMINI_KEYS = (process.env.REACT_APP_GEMINI_API_KEY || "").split(",");
@@ -15,11 +54,17 @@ const ReportForm = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Other');
-  const [location, setLocation] = useState(null);
+  const [location, setLocation] = useState({
+    type: 'Point',
+    coordinates: [81.5303, 16.5449] // Default coordinates centered around Pippara / Bhimavaram area
+  });
   const [photo, setPhoto] = useState('');
   const [fileName, setFileName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [accuracy, setAccuracy] = useState(null);
 
   const navigate = useNavigate();
 
@@ -66,13 +111,73 @@ If the image does not clearly show any of the above, or if you are uncertain, re
   }, []);
 
   useEffect(() => {
-    if (!navigator.geolocation) { toast.error('Geolocation is not supported by your browser.'); return; }
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser.');
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
-      (position) => setLocation({ type: 'Point', coordinates: [position.coords.longitude, position.coords.latitude] }),
-      () => toast.error('Please enable location services to submit a report.'),
-      { timeout: 10000 }
+      (position) => {
+        console.log("📍 Browser Geolocation Fetched:");
+        console.log("Latitude:", position.coords.latitude);
+        console.log("Longitude:", position.coords.longitude);
+        console.log("Accuracy (meters):", position.coords.accuracy);
+
+        setLocation({
+          type: "Point",
+          coordinates: [position.coords.longitude, position.coords.latitude],
+        });
+        setAccuracy(position.coords.accuracy);
+
+        if (position.coords.accuracy > 100) {
+          toast.error(
+            "Your location is not very accurate. You can tap the map or search to adjust it."
+          );
+        }
+      },
+      (err) => {
+        console.warn("Geolocation warning:", err.message);
+        toast.error("Could not auto-detect location. Please use the search bar or adjust the map.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
     );
   }, []);
+
+  const handleLocationSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    setIsSearchingLocation(true);
+    const toastId = toast.loading('Searching for location...');
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`
+      );
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const { lat, lon, display_name } = data[0];
+        const newLat = parseFloat(lat);
+        const newLng = parseFloat(lon);
+
+        setLocation({
+          type: 'Point',
+          coordinates: [newLng, newLat]
+        });
+        toast.success(`Location set: ${display_name.split(',')[0]}`, { id: toastId });
+      } else {
+        toast.error('Location not found. Try a different search (e.g., Pippara 534197).', { id: toastId });
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      toast.error('Search failed. Please try again.', { id: toastId });
+    } finally {
+      setIsSearchingLocation(false);
+    }
+  };
 
   const uploadFileHandler = async (e) => {
     const file = e.target.files[0];
@@ -95,6 +200,14 @@ If the image does not clearly show any of the above, or if you are uncertain, re
   const submitHandler = async (e) => {
     e.preventDefault();
     if (!location) { toast.error('Location data not available yet. Please wait.'); return; }
+    
+    // Log details before saving the report
+    console.log("---------------- REPORT LOCATION DETAILS ----------------");
+    console.log("Latitude:", location.coordinates[1]);
+    console.log("Longitude:", location.coordinates[0]);
+    console.log("Accuracy (meters):", accuracy !== null ? accuracy : "Manually adjusted / searched (No GPS detected)");
+    console.log("---------------------------------------------------------");
+
     const toastId = toast.loading('Submitting report...');
     try {
       await API.post('/reports', { title, description, category, location, photo });
@@ -147,9 +260,8 @@ If the image does not clearly show any of the above, or if you are uncertain, re
           <label className="block text-gray-700 font-medium mb-2">Issue Photo (Optional)</label>
           <label
             htmlFor="image-file"
-            className={`flex items-center gap-2 cursor-pointer border border-dashed border-gray-400 rounded-md py-2 px-3 hover:bg-gray-50 transition-colors ${
-              isProcessing ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`flex items-center gap-2 cursor-pointer border border-dashed border-gray-400 rounded-md py-2 px-3 hover:bg-gray-50 transition-colors ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
           >
             <FaFileUpload className="text-gray-500" />
             <span>{fileName || 'Select Photo'}</span>
@@ -167,8 +279,57 @@ If the image does not clearly show any of the above, or if you are uncertain, re
           )}
         </div>
 
-        {location && (
-          <p className="text-center text-green-600 text-sm -mt-2 mb-4">Location captured successfully!</p>
+        {location && location.coordinates && (
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Pinpoint Location
+            </label>
+            
+            {/* Search Bar */}
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search location (e.g. Pippara, Bhimavaram, 534197)..."
+                disabled={isSearchingLocation}
+                className="flex-grow border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleLocationSearch}
+                disabled={isSearchingLocation || !searchQuery.trim()}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-semibold text-sm transition disabled:opacity-50"
+              >
+                {isSearchingLocation ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+            
+            <p className="text-xs text-gray-500 mb-2">
+              💡 <em>If automatic GPS is inaccurate (e.g., placing you in Vijayawada instead of Bhimavaram/Pippara), search for your address or PIN code above, or click/drag directly on the map.</em>
+            </p>
+
+            <div className="h-64 w-full rounded-lg overflow-hidden border border-gray-300 relative z-0">
+              <MapContainer
+                center={[location.coordinates[1], location.coordinates[0]]}
+                zoom={16}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                <LocationMarker
+                  position={[location.coordinates[1], location.coordinates[0]]}
+                  setPosition={(latlng) => setLocation({ type: 'Point', coordinates: [latlng.lng, latlng.lat] })}
+                />
+                <MapCenterUpdater center={[location.coordinates[1], location.coordinates[0]]} />
+              </MapContainer>
+            </div>
+            <p className="text-xs text-gray-500 mt-1 text-center font-medium">
+              Coordinates: Lat {location.coordinates[1].toFixed(6)}, Lng {location.coordinates[0].toFixed(6)}
+            </p>
+          </div>
         )}
 
         <button

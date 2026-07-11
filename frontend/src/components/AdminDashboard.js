@@ -3,6 +3,7 @@ import API from '../api';
 import { useNavigate } from 'react-router-dom';
 import MapView from './MapView';
 import ImageModal from './ImageModal';
+import ReportDetailModal from './ReportDetailModal';
 import Spinner from './Spinner';
 import { 
   FaRegBuilding, 
@@ -124,6 +125,7 @@ const AdminDashboard = () => {
   const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(null);
   const [showCreateWorkerForm, setShowCreateWorkerForm] = useState(false);
   const navigate = useNavigate();
 
@@ -149,6 +151,7 @@ const AdminDashboard = () => {
       await API.put(`/reports/${id}`, { status });
       toast.success('Status updated successfully!', { id: toastId });
       fetchReports();
+      setSelectedReport(prev => prev && prev._id === id ? { ...prev, status } : prev);
     } catch (error) { 
       toast.error('Failed to update status.', { id: toastId });
     }
@@ -199,40 +202,48 @@ const AdminDashboard = () => {
               {filteredReports.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
                   {filteredReports.map((report) => (
-                    <div key={report._id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                      {report.photo && (
-                        <img 
-                          src={report.photo} 
-                          alt={report.title} 
-                          className="w-full h-40 object-cover cursor-pointer"
-                          onClick={() => setSelectedImage(report.photo)}
-                        />
-                      )}
-                      <div className="p-3 space-y-1">
-                        <h3 className="text-lg font-semibold truncate">{report.title}</h3>
-                        <p className="flex items-center gap-1 text-gray-700 text-sm">
-                          <FaTags className="text-orange-500" /> <span className="font-medium">Category:</span> {report.category}
-                        </p>
-                        <p className="flex items-center gap-1 text-gray-700 text-sm">
-                          <FaUserCheck className="text-green-500" /> <span className="font-medium">Submitted By:</span> {report.submittedBy.name}
-                        </p>
-                        <p className="flex items-center gap-1 text-gray-700 text-sm">
-                          <FaRegBuilding className="text-blue-500" /> <span className="font-medium">Assigned To:</span> {report.assignedTo}
-                        </p>
-                        <p className="flex items-center gap-1 text-gray-700 text-sm">
-                          <FaExclamationTriangle className="text-red-500" /> <span className="font-medium">Status:</span> 
-                          <span className={`ml-1 px-2 py-0.5 rounded-full text-white text-xs font-semibold
-                            ${report.status === 'Submitted' ? 'bg-gray-500' : report.status === 'In Progress' ? 'bg-yellow-500' : 'bg-green-600'}`}>
-                            {report.status}
-                          </span>
-                        </p>
+                    <div key={report._id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow flex flex-col justify-between">
+                      <div>
+                        {report.photo && (
+                          <img 
+                            src={report.photo} 
+                            alt={report.title} 
+                            className="w-full h-40 object-cover cursor-pointer"
+                            onClick={() => setSelectedReport(report)}
+                          />
+                        )}
+                        <div className="p-3 space-y-1">
+                          <h3 className="text-lg font-semibold truncate cursor-pointer hover:text-orange-600 transition-colors" onClick={() => setSelectedReport(report)}>{report.title}</h3>
+                          <p className="flex items-center gap-1 text-gray-700 text-sm">
+                            <FaTags className="text-orange-500" /> <span className="font-medium">Category:</span> {report.category}
+                          </p>
+                          <p className="flex items-center gap-1 text-gray-700 text-sm">
+                            <FaUserCheck className="text-green-500" /> <span className="font-medium">Submitted By:</span> {report.submittedBy.name}
+                          </p>
+                          <p className="flex items-center gap-1 text-gray-700 text-sm">
+                            <FaRegBuilding className="text-blue-500" /> <span className="font-medium">Assigned To:</span> {report.assignedTo}
+                          </p>
+                          <p className="flex items-center gap-1 text-gray-700 text-sm">
+                            <FaExclamationTriangle className="text-red-500" /> <span className="font-medium">Status:</span> 
+                            <span className={`ml-1 px-2 py-0.5 rounded-full text-white text-xs font-semibold
+                              ${report.status === 'Submitted' ? 'bg-gray-500' : report.status === 'In Progress' ? 'bg-yellow-500' : 'bg-green-600'}`}>
+                              {report.status}
+                            </span>
+                          </p>
+                        </div>
                       </div>
-                      <div className="p-3 border-t border-gray-200 flex flex-col gap-1">
-                        <label className="font-medium text-gray-700 text-sm">Update Status:</label>
+                      
+                      <div className="p-3 border-t border-gray-200 flex items-center justify-between gap-2 bg-gray-50">
+                        <button 
+                          onClick={() => setSelectedReport(report)}
+                          className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition"
+                        >
+                          View Details & Map
+                        </button>
                         <select 
-                          defaultValue={report.status} 
+                          value={report.status} 
                           onChange={(e) => handleStatusChange(report._id, e.target.value)}
-                          className="border border-gray-300 rounded-md py-1 px-2 outline-none text-sm focus:ring-2 focus:ring-orange-500"
+                          className="border border-gray-300 rounded-md py-1 px-2 outline-none text-xs focus:ring-2 focus:ring-orange-500 max-w-[125px] bg-white"
                         >
                           <option value="Submitted">Submitted</option>
                           <option value="In Progress">In Progress</option>
@@ -254,6 +265,13 @@ const AdminDashboard = () => {
         </div>
 
         <ImageModal imageUrl={selectedImage} onClose={() => setSelectedImage(null)} />
+        {selectedReport && (
+          <ReportDetailModal 
+            report={selectedReport} 
+            onClose={() => setSelectedReport(null)} 
+            onStatusChange={handleStatusChange}
+          />
+        )}
       </div>
     </div>
   );
