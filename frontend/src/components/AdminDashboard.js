@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api';
 import { useNavigate } from 'react-router-dom';
 import MapView from './MapView';
-import ImageModal from './ImageModal';
 import ReportDetailModal from './ReportDetailModal';
 import Spinner from './Spinner';
 import { 
@@ -19,7 +18,6 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
-// --- Worker Creation Form ---
 const CreateWorkerForm = ({ onFormClose }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -119,12 +117,10 @@ const CreateWorkerForm = ({ onFormClose }) => {
   );
 };
 
-// --- Admin Dashboard ---
 const AdminDashboard = () => {
   const [reports, setReports] = useState([]);
   const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [showCreateWorkerForm, setShowCreateWorkerForm] = useState(false);
   const navigate = useNavigate();
@@ -264,7 +260,6 @@ const AdminDashboard = () => {
           )}
         </div>
 
-        <ImageModal imageUrl={selectedImage} onClose={() => setSelectedImage(null)} />
         {selectedReport && (
           <ReportDetailModal 
             report={selectedReport} 

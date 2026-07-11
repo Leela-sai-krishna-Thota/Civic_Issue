@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { FaRobot, FaTimes, FaPaperPlane, FaUser } from "react-icons/fa";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Gemini API Key rotation
 const GEMINI_KEYS = (process.env.REACT_APP_GEMINI_API_KEY || "")
   .split(",")
   .map((key) => key.trim())
@@ -116,7 +115,6 @@ Response Guidelines:
     <div className="fixed bottom-6 right-6 z-50 font-sans">
       {isOpen ? (
         <div className="w-[380px] h-[550px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-150 animate-slideUp">
-          {/* Header */}
           <div className="bg-gradient-to-r from-orange-600 to-amber-500 text-white px-4 py-4 flex justify-between items-center shadow-md">
             <div className="flex items-center gap-3">
               <div className="bg-white bg-opacity-25 p-2 rounded-full">
@@ -138,7 +136,6 @@ Response Guidelines:
             </button>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 bg-slate-50">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-4">
@@ -148,7 +145,6 @@ Response Guidelines:
                 <h4 className="font-bold text-gray-800 text-lg mb-1">Welcome to Civic Support!</h4>
                 <p className="text-sm text-gray-500 mb-6">Ask me anything about reporting issues or using CivicTracker.</p>
                 
-                {/* Suggestions */}
                 <div className="w-full space-y-2">
                   <p className="text-xs font-semibold text-gray-400 text-left uppercase tracking-wider mb-2">Suggested Questions</p>
                   {QUICK_QUESTIONS.map((q, idx) => (
@@ -196,7 +192,6 @@ Response Guidelines:
             <div ref={messagesEndRef}></div>
           </div>
 
-          {/* Input Footer */}
           <div className="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
             <input
               type="text"

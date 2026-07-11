@@ -18,7 +18,6 @@ const customMarkerIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// Helper component to fix Leaflet size rendering inside modals
 const MapResizer = () => {
   const map = useMap();
   useEffect(() => {
@@ -50,7 +49,6 @@ const ReportDetailModal = ({ report, onClose, onStatusChange }) => {
         className="bg-white w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative max-h-[90vh] md:max-h-[85vh] animate-fadeIn"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
         <button 
           className="absolute top-4 right-4 z-10 text-gray-500 hover:text-gray-800 bg-white bg-opacity-80 hover:bg-opacity-100 p-2 rounded-full shadow-md transition"
           onClick={onClose}
@@ -58,7 +56,6 @@ const ReportDetailModal = ({ report, onClose, onStatusChange }) => {
           <FaTimes size={20} />
         </button>
 
-        {/* Left Column: Image */}
         <div className="w-full md:w-1/2 bg-gray-100 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-200 min-h-[250px] md:min-h-0">
           {report.photo ? (
             <img 
@@ -74,7 +71,6 @@ const ReportDetailModal = ({ report, onClose, onStatusChange }) => {
           )}
         </div>
 
-        {/* Right Column: Details & Map */}
         <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col overflow-y-auto max-h-[50vh] md:max-h-full">
           <div className="mb-4">
             <span className={`px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-wider
@@ -84,7 +80,6 @@ const ReportDetailModal = ({ report, onClose, onStatusChange }) => {
             <h2 className="text-2xl font-bold text-gray-800 mt-2">{report.title}</h2>
           </div>
 
-          {/* Metadata Grid */}
           <div className="grid grid-cols-2 gap-4 mb-5 text-sm text-gray-700">
             <div className="flex items-center gap-2">
               <FaTags className="text-orange-500" />
@@ -116,7 +111,6 @@ const ReportDetailModal = ({ report, onClose, onStatusChange }) => {
             </div>
           </div>
 
-          {/* Description */}
           <div className="mb-5">
             <h4 className="text-sm font-semibold text-gray-800 mb-1">Description</h4>
             <p className="text-gray-600 text-sm leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
@@ -124,7 +118,6 @@ const ReportDetailModal = ({ report, onClose, onStatusChange }) => {
             </p>
           </div>
 
-          {/* Interactive Single-Report Map */}
           {hasCoords && (
             <div className="mb-5">
               <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-1">
@@ -155,7 +148,6 @@ const ReportDetailModal = ({ report, onClose, onStatusChange }) => {
             </div>
           )}
 
-          {/* Update Status Dropdown */}
           <div className="mt-auto pt-4 border-t border-gray-100">
             <label className="block text-sm font-medium text-gray-700 mb-1">Update Report Status:</label>
             <select

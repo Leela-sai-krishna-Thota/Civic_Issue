@@ -56,7 +56,7 @@ const ReportForm = () => {
   const [category, setCategory] = useState('Other');
   const [location, setLocation] = useState({
     type: 'Point',
-    coordinates: [81.5303, 16.5449] // Default coordinates centered around Pippara / Bhimavaram area
+    coordinates: [81.5303, 16.5449]
   });
   const [photo, setPhoto] = useState('');
   const [fileName, setFileName] = useState('');
@@ -201,7 +201,6 @@ If the image does not clearly show any of the above, or if you are uncertain, re
     e.preventDefault();
     if (!location) { toast.error('Location data not available yet. Please wait.'); return; }
     
-    // Log details before saving the report
     console.log("---------------- REPORT LOCATION DETAILS ----------------");
     console.log("Latitude:", location.coordinates[1]);
     console.log("Longitude:", location.coordinates[0]);
@@ -224,7 +223,6 @@ If the image does not clearly show any of the above, or if you are uncertain, re
     <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-xl p-6 sm:p-10 mt-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">Report a New Civic Issue</h1>
       <form onSubmit={submitHandler} className="space-y-5">
-        {/* Title */}
         <div>
           <label className="block text-gray-700 font-medium mb-2">Title</label>
           <div className="flex items-center border border-gray-300 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-orange-500">
@@ -241,7 +239,6 @@ If the image does not clearly show any of the above, or if you are uncertain, re
           </div>
         </div>
 
-        {/* Description */}
         <div>
           <label className="block text-gray-700 font-medium mb-2">Description</label>
           <textarea
@@ -255,7 +252,6 @@ If the image does not clearly show any of the above, or if you are uncertain, re
           />
         </div>
 
-        {/* File Upload */}
         <div>
           <label className="block text-gray-700 font-medium mb-2">Issue Photo (Optional)</label>
           <label
@@ -285,7 +281,6 @@ If the image does not clearly show any of the above, or if you are uncertain, re
               Pinpoint Location
             </label>
             
-            {/* Search Bar */}
             <div className="flex gap-2 mb-3">
               <input
                 type="text"
