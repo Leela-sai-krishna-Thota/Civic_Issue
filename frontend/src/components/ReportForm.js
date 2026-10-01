@@ -45,10 +45,50 @@ const MapCenterUpdater = ({ center }) => {
 };
 
 const CATEGORIES = ['Pothole', 'Streetlight', 'Trash', 'Water Leakage', 'Other'];
-const GEMINI_KEYS = (process.env.REACT_APP_GEMINI_API_KEY || "").split(",");
+
+const getGeminiKeys = () => {
+  return (process.env.REACT_APP_GEMINI_API_KEY || "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter((k) => k.length > 0);
+};
+
 let keyIndex = 0;
-const getNextKey = () => { const key = GEMINI_KEYS[keyIndex]; keyIndex = (keyIndex + 1) % GEMINI_KEYS.length; return key; };
-const createAIInstance = () => { const key = getNextKey(); console.log("Using Gemini API Key:", key.slice(0, 6) + "..."); return new GoogleGenerativeAI(key); };
+const getNextKey = () => {
+  const keys = getGeminiKeys();
+  if (keys.length === 0) return null;
+  const key = keys[keyIndex % keys.length];
+  keyIndex = (keyIndex + 1) % keys.length;
+  return key;
+};
+
+const createAIInstance = () => {
+  const key = getNextKey();
+  if (!key) throw new Error("No valid Gemini API key available");
+  return new GoogleGenerativeAI(key);
+};
+
+const CANDIDATE_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
+  "gemini-2.5-flash"
+];
+
+const generateWithModelFallback = async (ai, contents) => {
+  let lastError = null;
+  for (const modelName of CANDIDATE_MODELS) {
+    try {
+      const model = ai.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(contents);
+      return result.response.text?.() || "";
+    } catch (err) {
+      console.warn(`Gemini model ${modelName} failed in ReportForm, trying next candidate:`, err.message);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("Failed to generate content with any Gemini model.");
+};
 
 const ReportForm = () => {
   const [title, setTitle] = useState('');
@@ -82,7 +122,6 @@ const ReportForm = () => {
     try {
       const base64Data = await fileToBase64(file);
       const ai = createAIInstance();
-      const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const prompt = `You are an image analysis assistant. Your task is to classify the primary issue visible in the image into exactly ONE of these categories:
 
 - Pothole  
@@ -96,8 +135,8 @@ If the image does not clearly show any of the above, or if you are uncertain, re
 - Respond with ONLY one word, exactly matching the category name.  
 - Do not add explanations, extra words, punctuation, or sentences.  
 - Examples of valid answers: "Pothole", "Trash", "Streetlight", "Water Leakage", "Other".`;
-      const result = await model.generateContent([prompt, { inlineData: { data: base64Data, mimeType: file.type } }]);
-      let detectedCategory = (await result.response).text().trim();
+      const rawText = await generateWithModelFallback(ai, [prompt, { inlineData: { data: base64Data, mimeType: file.type } }]);
+      let detectedCategory = rawText.trim();
       if (!CATEGORIES.includes(detectedCategory)) detectedCategory = 'Other';
       setCategory(detectedCategory);
       toast.success(`AI detected: ${detectedCategory}`, { id: 'ai-toast' });

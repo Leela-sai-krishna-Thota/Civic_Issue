@@ -2,27 +2,50 @@ import React, { useState, useEffect, useRef } from "react";
 import { FaRobot, FaTimes, FaPaperPlane, FaUser } from "react-icons/fa";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const GEMINI_KEYS = (process.env.REACT_APP_GEMINI_API_KEY || "")
-  .split(",")
-  .map((key) => key.trim())
-  .filter((key) => key.length > 0);
+const getGeminiKeys = () => {
+  return (process.env.REACT_APP_GEMINI_API_KEY || "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter((k) => k.length > 0);
+};
+
 let keyIndex = 0;
 const getNextKey = () => {
-  if (GEMINI_KEYS.length === 0) {
-    console.error("No Gemini API keys found!");
-    return null;
-  }
-  const key = GEMINI_KEYS[keyIndex];
-  keyIndex = (keyIndex + 1) % GEMINI_KEYS.length;
+  const keys = getGeminiKeys();
+  if (keys.length === 0) return null;
+  const key = keys[keyIndex % keys.length];
+  keyIndex = (keyIndex + 1) % keys.length;
   return key;
 };
+
 const createAIInstance = () => {
   const key = getNextKey();
   if (!key) {
     throw new Error("No valid Gemini API key available");
   }
-  console.log("Using Gemini API Key for chatbot:", key.slice(0, 6) + "...");
   return new GoogleGenerativeAI(key);
+};
+
+const CANDIDATE_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
+  "gemini-2.5-flash"
+];
+
+const generateWithModelFallback = async (ai, contents) => {
+  let lastError = null;
+  for (const modelName of CANDIDATE_MODELS) {
+    try {
+      const model = ai.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(contents);
+      return result.response.text?.() || "";
+    } catch (err) {
+      console.warn(`Gemini model ${modelName} failed, trying next candidate:`, err.message);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("Failed to generate content with any Gemini model.");
 };
 
 const QUICK_QUESTIONS = [
@@ -80,18 +103,16 @@ Response Guidelines:
 
     try {
       const ai = createAIInstance();
-      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
-
       const conversationText = newMessages
         .map((m) => (m.role === "user" ? "User: " : "Assistant: ") + m.content)
         .join("\n");
 
       const prompt = `${WEBSITE_CONTEXT}\n\nConversation history:\n${conversationText}\nAssistant:`;
 
-      const result = await model.generateContent([{ text: prompt }]);
-      const reply = result.response.text?.() || "I apologize, I could not generate a response at this moment.";
+      const reply = await generateWithModelFallback(ai, [{ text: prompt }]);
+      const finalReply = reply || "I apologize, I could not generate a response at this moment.";
 
-      setMessages([...newMessages, { role: "assistant", content: reply }]);
+      setMessages([...newMessages, { role: "assistant", content: finalReply }]);
     } catch (error) {
       console.error("Gemini API error:", error);
       let errorMessage = "Oops! Something went wrong while connecting. Please try again.";
